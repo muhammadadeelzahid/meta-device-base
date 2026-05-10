@@ -26,6 +26,9 @@ survives updates without compromising the rootfs.
 Wi-Fi, `systemd-networkd` for DHCP/IP, `systemd-resolved` for DNS,
 and `systemd-networkd-wait-online` scoped to `wlan0` so
 `network-online.target` reflects real connectivity.
+- **SocketCAN on SPI** — MCP2515 with a high-speed transceiver (for example
+TJA1050): `ENABLE_CAN` enables the Pi overlay; `systemd-networkd` brings up
+`can0` at boot; `can-utils` supplies `candump` and `cansend` for bring-up.
 - **Per-device identity** — each device automatically derives a unique  
 hawkBit target name from its hardware serial number on every boot.
 
@@ -43,6 +46,7 @@ hawkBit target name from its hardware serial number on every boot.
 | OTA server / client | Eclipse hawkBit, rauc-hawkbit-updater            |
 | Init / services     | systemd 255+, systemd-networkd, systemd-resolved |
 | Wi-Fi               | wpa_supplicant (template unit)                   |
+| CAN                 | MCP2515 (SPI), SocketCAN (`can0`), can-utils     |
 | Remote access       | OpenSSH (key-only)                               |
 | Hardware            | Raspberry Pi 4 / 5                               |
 
@@ -121,6 +125,7 @@ After boot, verify on the Pi:
 ```bash
 cat /etc/issue                       # Device Base Platform <version>
 networkctl status wlan0              # routable, online
+networkctl status can0               # bitrate and state when CAN hat is wired
 rauc status                          # slot states
 mount | grep /boot                   # /boot must be mounted
 ```
@@ -179,6 +184,52 @@ ROOT_PASSWORD_HASH       = "$6$..."
 
 ---
 
+## CAN bus (MCP2515 + transceiver)
+
+The image uses `**meta-raspberrypi**` knobs so `/boot/config.txt` enables SPI and
+the `mcp2515-can0` device tree overlay. Bit rate and bus recovery are set in
+`recipes-connectivity/systemd-networkd/files/20-can0.network` (default **500 kbit/s**).
+
+### Build-time settings (`local.conf`)
+
+```bitbake
+ENABLE_SPI_BUS = "1"
+ENABLE_CAN = "1"
+
+# Crystal frequency on the MCP2515 board (read the silver can). Default in
+# meta-raspberrypi is 16 MHz. Many low-cost modules use 8 MHz — if frames look
+# wrong but loopback works, try the other value:
+# CAN_OSCILLATOR = "8000000"
+
+# Interrupt GPIO for can0 (default 25). Match your wiring:
+# CAN0_INTERRUPT_PIN = "25"
+
+KERNEL_MODULE_AUTOLOAD:append = " mcp251x"
+```
+
+### Wiring summary (SPI0 / CE0, INT on GPIO25)
+
+Connect the MCP2515 side to Raspberry Pi pin header: SPI0 clocks and data,
+CE0 (`GPIO8`), interrupt on `GPIO25`, 3.3 V logic (`VCC_IO` where present), ground.
+Power the CAN transceiver (for example TJA1050) from **5 V** where the module
+requires it; avoid feeding 5 V back into Raspberry Pi SPI lines.
+
+Use **120 Ω** termination only at both ends of the physical CAN segment.
+
+### Runtime checks on the Pi
+
+```bash
+dmesg | grep -i mcp251x
+ip -d link show can0
+networkctl status can0
+candump -tz can0
+```
+
+`systemd-networkd-wait-online` remains scoped to **wlan0** only, so a missing MCU
+or unplugged CAN bus does not delay `network-online.target`.
+
+---
+
 ## Security
 
 ### Update integrity
@@ -221,7 +272,7 @@ meta-device-base/
 ├── files/rauc-keys/                        # RAUC dev PKI (signer + CA)
 ├── recipes-bsp/rpi-u-boot-scr/             # RAUC-aware boot.cmd.in
 ├── recipes-connectivity/
-│   ├── systemd-networkd/                   # 10-wlan0.network + wait-online override
+│   ├── systemd-networkd/                   # wlan0 + can0.network, wait-online override
 │   └── wpa-supplicant/                     # per-interface config + template unit
 ├── recipes-core/
 │   ├── bundles/device-base-bundle.bb       # signed .raucb recipe

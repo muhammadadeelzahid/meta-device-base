@@ -7,6 +7,7 @@ IMAGE_INSTALL = "packagegroup-core-boot \
                  wpa-supplicant \
                  wpa-supplicant-cli \
                  iw \
+                 can-utils \
                  systemd-networkd-config \
                  libubootenv-bin \
                  rauc \
