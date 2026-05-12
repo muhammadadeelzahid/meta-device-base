@@ -1,10 +1,6 @@
 # Device Base Platform
 
-> A reference Yocto layer for building a secure, OTA-updatable Linux platform
-> for Raspberry Pi 4 / 5 — built as a personal learning project to explore
-> A/B updates, signed firmware delivery, and immutable rootfs design.
-
-`meta-device-base` produces a flashable image and a signed update bundle
+A reference Yocto layer for building a secure, OTA-updatable Linux platform for Raspberry Pi 4 / 5. `meta-device-base` produces a flashable image and a signed update bundle
 that together form a complete embedded Linux platform with field-update
 capability.
 
@@ -75,7 +71,7 @@ git clone https://git.openembedded.org/meta-openembedded -b scarthgap
 git clone https://github.com/agherzan/meta-raspberrypi -b scarthgap
 git clone https://github.com/rauc/meta-rauc -b scarthgap
 git clone https://github.com/rauc/meta-rauc-community -b scarthgap
-git clone <this-repo-url> meta-device-base
+git clone https://github.com/muhammadadeelzahid/meta-device-base
 ```
 
 Add the layers to `bblayers.conf` and configure `local.conf` (see
@@ -103,8 +99,6 @@ build-rpi/tmp/deploy/images/raspberrypi4-64/
 ---
 
 ## Flash
-
-`bmaptool` handles `.bz2` directly and is faster than raw `dd`.
 
 ```bash
 lsblk -p -o NAME,SIZE,RM,MODEL,MOUNTPOINT     # find the SD card
@@ -230,25 +224,6 @@ meta-device-base/
 │   └── rauc-hawkbit-identity/              # identity service + config template
 └── README.md
 ```
-
----
-
-## QEMU simulation
-
-For testing without hardware:
-
-```bitbake
-MACHINE = "qemuarm64"
-```
-
-```bash
-bitbake device-base-image
-runqemu qemuarm64 nographic
-```
-
-The image recipe automatically removes A/B + RAUC + OverlayFS features
-for QEMU targets, leaving a flat ext4 rootfs suitable for service-level
-testing.
 
 ---
 
