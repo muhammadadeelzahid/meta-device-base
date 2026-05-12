@@ -6,6 +6,7 @@ IMAGE_INSTALL = "packagegroup-core-boot \
                  linux-firmware-rpidistro-bcm43456 \
                  wpa-supplicant \
                  wpa-supplicant-cli \
+                 wifi-setup \
                  iw \
                  systemd-networkd-config \
                  libubootenv-bin \
